@@ -1,0 +1,258 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Traffic Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            margin: 0;
+            font-weight: 300;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        .stat-card {
+            background-color: #3498db;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .protocol {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .tcp { background-color: #e6f7ff; color: #1890ff; }
+        .udp { background-color: #f6ffed; color: #52c41a; }
+        .icmp { background-color: #fff0f6; color: #eb2f96; }
+        .arp { background-color: #f0f5ff; color: #2f54eb; }
+        .dns { background-color: #e6fffb; color: #13c2c2; }
+        .other { background-color: #fff7e6; color: #fa8c16; }
+        .refresh-btn {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .refresh-btn:hover {
+            background-color: #1abc9c;
+        }
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Network Traffic Monitor</h1>
+            <div class="stats">
+                <div class="stat-card" id="total-packets">0 Packets</div>
+                <div class="stat-card" id="top-protocol">TCP: 0</div>
+            </div>
+        </header>
+        
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+            <button class="refresh-btn" onclick="refreshData()">
+                <span style="margin-right: 5px">⟳</span> Refresh
+            </button>
+            <input type="text" id="ip-search" class="refresh-btn" placeholder="Search IP..." style="padding: 8px 12px; width: 200px;">
+            <select class="refresh-btn" id="protocol-filter" style="padding: 8px 12px">
+                <option value="all">All Protocols</option>
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+                <option value="icmp">ICMP</option>
+                <option value="arp">ARP</option>
+                <option value="dns">DNS</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        
+        <table id="packet-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Source IP</th>
+                    <th>Destination IP</th>
+                    <th>Protocol</th>
+                    <th>Size</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="packet-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        function refreshData() {
+            fetch('/packets')
+                .then(response => response.json())
+                .then(data => {
+                    const filtered = filterPackets(data);
+                    document.getElementById('total-packets').textContent = `${filtered.length}/${data.length} Packets`;
+                    updateProtocolStats(data);
+                    renderTable(data);
+                });
+        }
+
+        function updateProtocolStats(packets) {
+            const protocolCount = {tcp: 0, udp: 0, icmp: 0, arp: 0, dns: 0, other: 0};
+            packets.forEach(pkt => {
+                const proto = pkt.protocol_name?.toUpperCase();
+                if (proto === 'TCP') protocolCount.tcp++;
+                else if (proto === 'UDP') protocolCount.udp++;
+                else if (proto === 'ICMP') protocolCount.icmp++;
+                else if (proto === 'ARP') protocolCount.arp++; 
+                else if (proto === 'DNS') protocolCount.dns++;
+                else {
+                    // Get protocol name from the packet layers
+                    const layers = Object.keys(pkt.layers || {});
+                    const knownProto = layers.find(layer => 
+                        ['TCP','UDP','ICMP','ARP','DNS'].includes(layer.toUpperCase())
+                    );
+                    if (knownProto) {
+                        protocolCount[knownProto.toLowerCase()]++;
+                    } else {
+                        protocolCount.other++;
+                    }
+                }
+            });
+            
+            let topProto = 'TCP';
+            if (protocolCount.udp > protocolCount.tcp) topProto = 'UDP';
+            
+            document.getElementById('top-protocol').textContent = 
+                `${topProto}: ${protocolCount[topProto.toLowerCase()]}`;
+        }
+
+        function filterPackets(packets) {
+            const ipSearch = document.getElementById('ip-search').value.toLowerCase();
+            const protocolFilter = document.getElementById('protocol-filter').value;
+            
+            return packets.filter(pkt => {
+                const matchesIP = !ipSearch || 
+                    pkt.src_ip.toLowerCase().includes(ipSearch) || 
+                    pkt.dst_ip.toLowerCase().includes(ipSearch);
+                let pktProtocol = pkt.protocol_name?.toLowerCase();
+                if (!pktProtocol) {
+                    const layers = Object.keys(pkt.layers || {});
+                    pktProtocol = layers.find(layer => 
+                        ['tcp','udp','icmp','arp','dns'].includes(layer.toLowerCase())
+                    )?.toLowerCase();
+                }
+                
+                const matchesProtocol = protocolFilter === 'all' || 
+                    (pktProtocol && pktProtocol === protocolFilter) ||
+                    (protocolFilter === 'other' && 
+                     !('tcp','udp','icmp','arp','dns').includes(pktProtocol));
+                return matchesIP && matchesProtocol;
+            });
+        }
+
+        function renderTable(packets) {
+            const tableBody = document.getElementById('packet-body');
+            tableBody.innerHTML = '';
+            
+            const filteredPackets = filterPackets(packets);
+            
+            filteredPackets.forEach(pkt => {
+                const row = document.createElement('tr');
+                
+                // Protocol badge
+                let protocolName = pkt.protocol_name?.toUpperCase();
+                if (!protocolName) {
+                    // Try to determine protocol from packet layers
+                    const layers = Object.keys(pkt.layers || {});
+                    protocolName = layers.find(layer => 
+                        ['TCP','UDP','ICMP','ARP','DNS'].includes(layer.toUpperCase())
+                    ) || 'OTHER';
+                }
+                
+                const protoClass = protocolName.toLowerCase();
+                const protocolBadge = `<span class="protocol ${['tcp','udp','icmp','arp','dns'].includes(protoClass) ? protoClass : 'other'}">
+                    ${protocolName}
+                </span>`;
+                
+                // Port info
+                const ports = pkt.src_port ? 
+                    `${pkt.src_port} → ${pkt.dst_port}` : 'N/A';
+                
+                // Construct row
+                row.innerHTML = `
+                    <td>${pkt.timestamp}</td>
+                    <td>${pkt.src_ip}</td>
+                    <td>${pkt.dst_ip}</td>
+                    <td>${protocolBadge}</td>
+                    <td>${pkt.size} bytes</td>
+                    <td>${pkt.summary}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initial load and refresh every 3 seconds
+        refreshData();
+        setInterval(refreshData, 3000);
+        
+        // Add event listeners for filter changes
+        document.getElementById('ip-search').addEventListener('input', () => {
+            refreshData();
+        });
+        document.getElementById('protocol-filter').addEventListener('change', () => {
+            refreshData();
+        });
+    </script>
+</body>
+</html>
