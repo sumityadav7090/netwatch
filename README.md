@@ -16,7 +16,8 @@ A Python-based application for capturing and analyzing network traffic with a we
 - Scapy (`pip install scapy`)
 - Flask (`pip install flask`)
 - 
-##Instructions (Step-by-Step)
+## Instructions (Step-by-Step)
+
 Open CMD as Administrator
 
 Press Win + X → Choose Command Prompt (Admin) or Windows Terminal (Admin)
@@ -49,3 +50,4 @@ Reboot your computer to load the driver properly.
    git clone https://github.com/yourusername/netwatch.git
 
    cd netwatch
+
