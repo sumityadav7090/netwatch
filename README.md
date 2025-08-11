@@ -43,6 +43,11 @@ Check:
 After Installation
 
 Reboot your computer to load the driver properly.
+
+## Optional CMD Check After Reboot
+To verify that Npcap is installed:
+
+
 ## Installation
 
 1. Clone this repository:
@@ -50,4 +55,5 @@ Reboot your computer to load the driver properly.
    git clone https://github.com/yourusername/netwatch.git
 
    cd netwatch
+
 
