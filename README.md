@@ -49,6 +49,11 @@ To verify that Npcap is installed:
 ```cmd
 sc query npcap  
  ```
+You should see something like:
+```yaml
+SERVICE_NAME: npcap
+        STATE              : 4  RUNNING
+```
 
 ## Installation
 
@@ -57,6 +62,7 @@ sc query npcap
    git clone https://github.com/yourusername/netwatch.git
 
    cd netwatch
+
 
 
 
