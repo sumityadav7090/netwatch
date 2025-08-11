@@ -61,9 +61,13 @@ SERVICE_NAME: npcap
    ```bash
    git clone https://github.com/yourusername/netwatch.git
 
-   cd netwatch
+   cd netwatch  ```
 
+## Install all dependencies
 
+``` cmd
+pip install -r requirements.txt
 
+```
 
 
